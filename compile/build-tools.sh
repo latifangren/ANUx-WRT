@@ -280,7 +280,6 @@ run_packages() {
         "luci-app-ipinfo|https://api.github.com/repos/de-quenx/luci-app-ipinfo/releases/latest"
         "luci-app-tailscale|https://api.github.com/repos/asvow/luci-app-tailscale/releases/latest"
         "luci-app-5gmodem|https://api.github.com/repos/fildunsky/luci-app-5gmodem/releases/latest"
-        "sms-tool|https://api.github.com/repos/4IceG/sms-tool/releases/latest"
         "ookla-speedtest-{arch_3}|https://api.github.com/repos/de-quenx/kwrt-packages/releases/latest"
         "luci-app-poweroffdevice|https://api.github.com/repos/de-quenx/luci-app-poweroffdevice/releases/latest"
         #"luci-app-3ginfo-lite|https://api.github.com/repos/4IceG/luci-app-3ginfo-lite/releases/latest"
@@ -662,7 +661,9 @@ run_makeimage() {
     
     # Modem tools & info
     # Note: luci-app-5gmodem is installed via packages_core (download_packages)
-    local MODEM="sms-tool luci-app-lite-watchdog" # modemband luci-app-modemband luci-app-sms-tool-js luci-app-3ginfo-lite modemdata luci-app-modemdata
+    # Note: sms-tool package (from 4IceG/sms-tool) is not available - 404
+    # SMS/AT functionality is covered by sms-tool_q (in QMODEM) and luci-app-sms-tool-js
+    local MODEM="luci-app-lite-watchdog" # modemband luci-app-modemband luci-app-sms-tool-js luci-app-3ginfo-lite modemdata luci-app-modemdata
     
     # QModem tools
     local QMODEM="ubus-at-daemon sms-tool_q ndisc6 quectel-CM-5G-M qmodem tom_modem sms-forwarder-next luci-app-qmodem-next"
