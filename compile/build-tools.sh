@@ -110,8 +110,6 @@ misc_file_perms() {
         "files/etc/init.d/xidzs"
         "files/etc/init.d/repair_ro"
         "files/sbin/free.sh"
-        "files/sbin/jam"
-        "files/sbin/ping.sh"
         "files/sbin/repair_ro"
         "files/usr/bin/xdev"
         "files/usr/bin/xidz"

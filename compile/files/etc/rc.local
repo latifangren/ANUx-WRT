@@ -2,5 +2,4 @@
 # x-gpio only for hg680-p & b860h
 #sleep 7 && /usr/bin/x-gpio -r
 #sleep 7 && /sbin/free.sh
-#/sbin/jam bug.com
 exit 0
