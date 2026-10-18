@@ -4,7 +4,7 @@ server:
   mode: release
 mihomo:
   core_path: /usr/bin/mihomo
-  config_path: /etc/fusiontunx/configs/xidzs.yaml
+  config_path: /etc/fusiontunx/configs/anux.yaml
   working_dir: /etc/fusiontunx
   auto_restart: true
   auto_start: false

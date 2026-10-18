@@ -259,7 +259,6 @@ run_packages() {
         "luci-theme-luxe|https://api.github.com/repos/de-quenx/luci-theme-luxe/releases/latest"
         "luci-theme-argon|https://api.github.com/repos/de-quenx/luci-theme-argon/releases/latest"
         "luci-app-temp-status|https://api.github.com/repos/de-quenx/kwrt-packages/releases/latest"
-        "luci-app-tinyfm|https://api.github.com/repos/de-quenx/luci-app-tinyfm/releases/latest"
         "luci-app-netmonitor|https://api.github.com/repos/de-quenx/luci-app-netmonitor/releases/latest"
         "luci-app-ttl|https://api.github.com/repos/de-quenx/custom-x/releases/latest"
         "luci-app-ipinfo|https://api.github.com/repos/de-quenx/luci-app-ipinfo/releases/latest"
@@ -609,7 +608,7 @@ run_makeimage() {
     local tunnel_option="${2:-}"
     local build_files="files"
     local PACKAGES=""
-    local DISABLED_SERVICES="xidzs zram"
+    local DISABLED_SERVICES="xidzs anux zram"
     local EXCLUDED=""
     
     log "INFO" "Starting ImageBuilder for: $target_profile [Tunnel: ${tunnel_option:-none}]"
@@ -649,12 +648,7 @@ run_makeimage() {
     
     # QModem tools
     local QMODEM="ubus-at-daemon sms-tool_q ndisc6 quectel-CM-5G-M qmodem tom_modem sms-forwarder-next luci-app-qmodem-next"
-    
-    # File manager & PHP
-    local TINYFM="php8 php8-cli php8-fastcgi php8-fpm php8-mod-session php8-mod-ctype php8-mod-fileinfo \
-    php8-mod-zip php8-mod-iconv php8-mod-mbstring luci-app-tinyfm"
-    
-    # Network monitoring & statistics
+
     local STATS="vnstat2 vnstati2 luci-app-netmonitor"
     
     # UI themes
@@ -674,7 +668,7 @@ run_makeimage() {
     
     # all packages variable
     PACKAGES+=" ${STORAGE} ${MODEM} ${INTERNETD} \
-    ${STATS} ${THEME} ${TINYFM} ${OTHER} "
+    ${STATS} ${THEME} ${OTHER} "
     
     # Check architecture support for QModem
     if [[ ! ( "${ARCH_1:-}" == "armv6" || \
@@ -923,7 +917,7 @@ run_modsdcard() {
         [ -f "../${file_name}.gz" ] && rm -rf "../${file_name}.gz"
 
         # Output final image
-        local new_name="XIDZs-${OP_BASE}-${BRANCH}-${suffix}-${kernel}-${TUNNEL}-${DATE}-MODSDCARD.img.gz"
+        local new_name="ANUx-${OP_BASE}-${BRANCH}-${suffix}-${kernel}-${TUNNEL}-${DATE}-MODSDCARD.img.gz"
 
         mv "${file_name}.gz" "../${new_name}" || { error_msg "Rename failed: ${log_target}"; return 1; }
 
@@ -1170,15 +1164,15 @@ run_rename() {
             if [[ -f "$file" ]]; then
                 local kernel=""
                 if [[ "$file" =~ k[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9-]+)? ]]; then kernel="${BASH_REMATCH[0]}"; fi
-                local new_name="XIDZs-${OP_BASE}-${BRANCH}-${replace}-${TUNNEL}-${DATE}.img.gz"
-                if [[ -n "$kernel" ]]; then new_name="XIDZs-${OP_BASE}-${BRANCH}-${replace}-${kernel}-${TUNNEL}-${DATE}.img.gz"; fi
+                local new_name="ANUx-${OP_BASE}-${BRANCH}-${replace}-${TUNNEL}-${DATE}.img.gz"
+                if [[ -n "$kernel" ]]; then new_name="ANUx-${OP_BASE}-${BRANCH}-${replace}-${kernel}-${TUNNEL}-${DATE}.img.gz"; fi
                 log "INFO" "Renaming: $file -> $new_name"
                 mv "$file" "$new_name" || log "WARN" "Rename failed: $file"
             fi
         done
         for file in *"${search}"*.tar.gz; do
             if [[ -f "$file" ]]; then
-                local new_name="XIDZs-${OP_BASE}-${BRANCH}-${replace}-${TUNNEL}-${DATE}.img.gz"
+                local new_name="ANUx-${OP_BASE}-${BRANCH}-${replace}-${TUNNEL}-${DATE}.img.gz"
                 log "INFO" "Renaming: $file -> $new_name"
                 mv "$file" "$new_name" || log "WARN" "Rename failed: $file"
             fi

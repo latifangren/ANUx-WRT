@@ -72,7 +72,7 @@ WILCARD:
 # jangan pakai SIMBOL ATOPUN EMOJI nanti kadang eror!!
 
 proxies:
-  - name: XIDZ
+  - name: ANUx
     <<: *VL_WS
     server: *id1
     servername: *bug1

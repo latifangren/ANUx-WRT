@@ -209,9 +209,9 @@ detect_mac80211() {
 			set wireless.default_${name}.device=${name}
 			set wireless.default_${name}.network=lan
 			set wireless.default_${name}.mode=ap
-			set wireless.default_${name}.ssid=XIDZs
+			set wireless.default_${name}.ssid=ANUx
 			set wireless.default_${name}.encryption=psk2
-			set wireless.default_${name}.key=XIDZs2026
+			set wireless.default_${name}.key=ANUx2026
 EOF
 		uci -q commit wireless
 	done

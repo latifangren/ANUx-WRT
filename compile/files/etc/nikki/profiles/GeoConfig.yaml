@@ -9,7 +9,7 @@ mode: rule
 log-level: info
 allow-lan: true
 external-controller: 0.0.0.0:9090
-secret: "xidz"
+secret: "anux"
 unified-delay: true
 tcp-concurrent: true
 
@@ -250,5 +250,5 @@ rules:
   - MATCH,VPN
 
 authentication:
-  - mihomo:xidz
+  - mihomo:anux
   

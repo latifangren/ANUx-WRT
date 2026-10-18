@@ -12,14 +12,14 @@
 ---
 
 <p align="center">
-  <img src="https://img.shields.io/github/downloads/de-quenx/XIDZs-WRT/total?style=for-the-badge&logo=openwrt&labelColor=blue" alt="Downloads">
+  <img src="https://img.shields.io/github/downloads/latifangren/ANUx-WRT/total?style=for-the-badge&logo=openwrt&labelColor=blue" alt="Downloads">
   <br>
-  <a href="https://xidzs-wrt.web.id/">
-    <img src="https://img.shields.io/badge/XIDZsWRT-WEB-orange?style=for-the-badge" alt="XIDZsWRT WEB">
+  <a href="https://github.com/latifangren/ANUx-WRT">
+    <img src="https://img.shields.io/badge/ANUxWRT-REPO-orange?style=for-the-badge&logo=github" alt="ANUxWRT REPO">
   </a>
   <br>
-  <a href="https://github.com/de-quenx/XIDZs-WRT/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/de-quenx/XIDZs-WRT?style=for-the-badge" alt="License">
+  <a href="https://github.com/latifangren/ANUx-WRT/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/latifangren/ANUx-WRT?style=for-the-badge" alt="License">
   </a>
   <img src="https://img.shields.io/badge/STATUS-Active-brightgreen?style=for-the-badge" alt="Status">
 </p>
@@ -44,7 +44,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/©-2026-blue?style=for-the-badge" alt="Copyright">
-  <img src="https://img.shields.io/badge/XIDZs-WRT-FF6B35?style=for-the-badge&logo=github&logoColor=white" alt="XIDZs-WRT">
+  <img src="https://img.shields.io/badge/ANUx-WRT-FF6B35?style=for-the-badge&logo=github&logoColor=white" alt="ANUx-WRT">
 </p>
 
 ---
@@ -53,6 +53,7 @@
 
 <p align="center">
 <small>
+<a href="https://github.com/de-quenx/XIDZs-WRT">XIDZs-WRT By de-quenx (Upstream)</a><br>
 <a href="https://github.com/rizkikotet-dev/RTA-WRT">RTA-WrtBuilder By RizkiKotet-Dev</a><br>
 <a href="https://github.com/frizkyiman/friWrt-MyWrtBuilder">friWrt-MyWrtBuilder By frizkyiman</a><br>
 <a href="https://github.com/armarchindo/ULO-Builder/blob/main/ulo">ULO Builder By DBAI</a><br>

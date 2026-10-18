@@ -293,8 +293,8 @@ jobs:
           echo "datetime=$DATETIME" >> "$GITHUB_OUTPUT"
           
           LOWER_BASE=$(echo "$BASE" | tr 'A-Z' 'a-z')
-          RELEASE_NAME="xidzswrt-${VEROP}-${LOWER_BASE}-${DATE}"
-          RELEASE_TAG="xidzswrt-${VEROP}-${LOWER_BASE}-${DATE}"
+          RELEASE_NAME="anuxwrt-${VEROP}-${LOWER_BASE}-${DATE}"
+          RELEASE_TAG="anuxwrt-${VEROP}-${LOWER_BASE}-${DATE}"
           
           echo "release_name=$RELEASE_NAME" >> "$GITHUB_OUTPUT"
           echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
@@ -632,7 +632,7 @@ jobs:
                   xz -d "$file" && gzip "${file%.xz}"
                   file="${file%.xz}.gz"
                 fi
-                mv "$file" compiled_images/"XIDZs_$(basename "$file" -rootfs.tar.gz)_${{ env.TUNNEL }}-rootfs.tar.gz"
+                mv "$file" compiled_images/"ANUx_$(basename "$file" -rootfs.tar.gz)_${{ env.TUNNEL }}-rootfs.tar.gz"
                 break
               fi
             done

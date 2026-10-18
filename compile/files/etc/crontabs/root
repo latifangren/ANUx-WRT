@@ -9,8 +9,8 @@
 #30 3 * * * ifdown fibocom && sleep 3 && ifup fibocom
 # restart openclash every 8h
 #0 */8 * * * /etc/init.d/openclash restart
-# restart xidzs bot every 12h
-#0 */12 * * * /etc/init.d/xidzs restart
+# restart bot every 12h
+#0 */12 * * * /etc/init.d/anux restart
 # Network stats every 5m
 # RAM cleanup every 10h
 0 */10 * * * /sbin/free.sh >/dev/null 2>&1
