@@ -156,6 +156,19 @@ misc_base_config() {
         log "INFO" "Standard target detected"
         wget --no-check-certificate -q -O "$uci_dir/99-init-settings.sh" "https://raw.githubusercontent.com/syntax-xidz/contenx/main/xidz/wifion/99-init-settings.sh" || log "WARN" "Standard init script failed"
     fi
+    # Apply ANUx-WRT Performance & Stability Settings (uhttpd & rpcd tweaks)
+    cat << 'EOF' > "$uci_dir/90-anux-settings.sh"
+#!/bin/sh
+# Increase uhttpd max concurrent requests to prevent LuCI timeouts
+uci -q set uhttpd.main.max_requests='20'
+uci -q commit uhttpd
+
+# Increase rpcd timeout to 120s for heavy packages
+uci -q set rpcd.@rpcd[0].timeout='120'
+uci -q commit rpcd
+exit 0
+EOF
+    chmod 755 "$uci_dir/90-anux-settings.sh"
 
     log "INFO" "Base system configured: ${BASE}"
 }
@@ -651,6 +664,11 @@ run_makeimage() {
 
     local STATS="vnstat2 vnstati2 luci-app-netmonitor"
     
+    # File Manager (Golang)
+    local FILEMANAGER="filebrowser luci-app-filebrowser"
+    
+    # Performance & Hardware Monitoring (from Kwrt)
+    local PERF="kmod-tcp-bbr kmod-lib-zstd autocore"
     # UI themes
     local THEME="luci-theme-luxe luci-theme-argon luci-theme-footstrap"
     
@@ -668,7 +686,7 @@ run_makeimage() {
     
     # all packages variable
     PACKAGES+=" ${STORAGE} ${MODEM} ${INTERNETD} \
-    ${STATS} ${THEME} ${OTHER} "
+    ${STATS} ${THEME} ${FILEMANAGER} ${PERF} ${OTHER} "
     
     # Check architecture support for QModem
     if [[ ! ( "${ARCH_1:-}" == "armv6" || \
