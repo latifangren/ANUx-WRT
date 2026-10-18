@@ -166,6 +166,10 @@ uci -q commit uhttpd
 # Increase rpcd timeout to 120s for heavy packages
 uci -q set rpcd.@rpcd[0].timeout='120'
 uci -q commit rpcd
+
+# Set default LuCI theme to Footstrap
+uci -q set luci.main.mediaurlbase='/luci-static/footstrap'
+uci -q commit luci
 exit 0
 EOF
     chmod 755 "$uci_dir/90-anux-settings.sh"
@@ -269,6 +273,8 @@ run_packages() {
         "luci-app-lite-watchdog|${WATCHDOG_REPO}"
         "tailscale|${REPOS[OPENWRT]}/packages"
         "luci-theme-footstrap|https://api.github.com/repos/VizzleTF/luci-theme-footstrap/releases/latest"
+        "luci-theme-vantage|https://api.github.com/repos/anothaDev/luci-theme-vantage/releases/latest"
+        "luci-app-vantage|https://api.github.com/repos/anothaDev/luci-theme-vantage/releases/latest"
         "luci-theme-luxe|https://api.github.com/repos/de-quenx/luci-theme-luxe/releases/latest"
         "luci-theme-argon|https://api.github.com/repos/de-quenx/luci-theme-argon/releases/latest"
         "luci-app-temp-status|https://api.github.com/repos/de-quenx/kwrt-packages/releases/latest"
@@ -670,7 +676,7 @@ run_makeimage() {
     # Performance & Hardware Monitoring (from Kwrt)
     local PERF="kmod-tcp-bbr kmod-lib-zstd autocore"
     # UI themes
-    local THEME="luci-theme-luxe luci-theme-argon luci-theme-footstrap"
+    local THEME="luci-theme-footstrap luci-theme-vantage luci-app-vantage luci-theme-argon luci-theme-luxe"
     
     # Misc utilities
     local OTHER="luci-app-ramfree ttyd luci-app-ttyd luci-app-ttl luci-app-ipinfo luci-app-eqosplus tailscale luci-app-tailscale ookla-speedtest luci-app-poweroffdevice"
