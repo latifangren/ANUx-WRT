@@ -659,18 +659,19 @@ run_makeimage() {
     local STORAGE="kmod-usb-storage luci-app-diskman kmod-usb-storage-uas ntfs-3g"
     
     # Modem tools & info
-    local MODEM="sms-tool luci-app-5gmodem luci-app-lite-watchdog" # modemband luci-app-modemband luci-app-sms-tool-js luci-app-3ginfo-lite modemdata luci-app-modemdata
+    # Note: luci-app-5gmodem is installed via packages_core (download_packages)
+    local MODEM="sms-tool luci-app-lite-watchdog" # modemband luci-app-modemband luci-app-sms-tool-js luci-app-3ginfo-lite modemdata luci-app-modemdata
     
     # QModem tools
     local QMODEM="ubus-at-daemon sms-tool_q ndisc6 quectel-CM-5G-M qmodem tom_modem sms-forwarder-next luci-app-qmodem-next"
 
     local STATS="vnstat2 vnstati2 luci-app-netmonitor"
     
-    # File Manager (Golang)
-    local FILEMANAGER="filebrowser luci-app-filebrowser"
+    # File Manager (TinyFM with built-in editor)
+    local FILEMANAGER="luci-app-tinyfm"
     
     # Performance & Hardware Monitoring (from Kwrt)
-    local PERF="kmod-tcp-bbr kmod-lib-zstd autocore"
+    local PERF="kmod-tcp-bbr kmod-lib-zstd"
     # UI themes
     local THEME="luci-theme-footstrap luci-theme-vantage luci-app-vantage luci-theme-argon luci-theme-luxe"
     
@@ -763,6 +764,8 @@ run_makeimage() {
     elif [[ "${BASE:-}" == "immortalwrt" ]]; then
         EXCLUDED+=" -dnsmasq -cpusage -automount -libustream-openssl -default-settings-chn -luci-i18n-base-zh-cn "
         if [[ "${ARCH_2:-}" == "x86_64" ]] || [[ "${ARCH_2:-}" == "i386" ]]; then EXCLUDED+=" -kmod-usb-net-rtl8152-vendor "; fi
+        # autocore is only available in ImmortalWrt base, not in OpenWrt base
+        PACKAGES+=" autocore "
     fi
     
     make info
