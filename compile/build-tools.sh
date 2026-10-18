@@ -48,14 +48,18 @@ misc_permissions() {
 misc_download_scripts() {
     log "INFO" "Downloading CLI scripts"
     local scripts=(
-        "https://raw.githubusercontent.com/syntax-xidz/contenx/main/xcli/syntax|files/usr/bin"
-        "https://raw.githubusercontent.com/syntax-xidz/contenx/main/xcli/x-gpio|files/usr/bin"
-        "https://raw.githubusercontent.com/syntax-xidz/contenx/main/xcli/xidz|files/usr/bin"
-        "https://raw.githubusercontent.com/syntax-xidz/contenx/main/xcli/xdev|files/usr/bin"
-        "https://raw.githubusercontent.com/syntax-xidz/contenx/main/xcli/x-gpioled|files/usr/bin"
-        "https://raw.githubusercontent.com/syntax-xidz/contenx/main/xcli/xidzs|files/etc/init.d"
+        "https://raw.githubusercontent.com/latifangren/contenx/main/xcli/syntax|files/usr/bin"
+        "https://raw.githubusercontent.com/latifangren/contenx/main/xcli/x-gpio|files/usr/bin"
+        "https://raw.githubusercontent.com/latifangren/contenx/main/xcli/xidz|files/usr/bin"
+        "https://raw.githubusercontent.com/latifangren/contenx/main/xcli/xdev|files/usr/bin"
+        "https://raw.githubusercontent.com/latifangren/contenx/main/xcli/x-gpioled|files/usr/bin"
+        "https://raw.githubusercontent.com/latifangren/contenx/main/xcli/xidzs|files/etc/init.d"
     )
-    for s in "${scripts[@]}"; do IFS='|' read -r url path <<< "$s"; mkdir -p "$path"; wget --no-check-certificate -nv -P "$path" "$url" || log "WARN" "Download failed: $url"; done
+    for s in "${scripts[@]}"; do
+        IFS='|' read -r url path <<< "$s"
+        mkdir -p "$path"
+        wget --no-check-certificate -nv -P "$path" "$url" || wget --no-check-certificate -nv -P "$path" "${url/latifangren/syntax-xidz}" || log "WARN" "Download failed: $url"
+    done
 }
 
 # Download QModem
@@ -85,10 +89,10 @@ misc_download_qmodem() {
         esac
         
         # Generate download URL
-        local qmodem_url="https://raw.githubusercontent.com/syntax-xidz/contenx/main/xmodem/QModem-${arch_fmt}_${pkg_ext}_${v_suf}.zip"
+        local qmodem_url="https://raw.githubusercontent.com/latifangren/contenx/main/xmodem/QModem-${arch_fmt}_${pkg_ext}_${v_suf}.zip"
 
         log "INFO" "Fetching QModem: $qmodem_url"
-        wget --no-check-certificate -q "$qmodem_url" -O qmodem.zip
+        wget --no-check-certificate -q "$qmodem_url" -O qmodem.zip || wget --no-check-certificate -q "${qmodem_url/latifangren/syntax-xidz}" -O qmodem.zip
         
         if [[ -f "qmodem.zip" ]]; then
             mkdir -p packages
@@ -147,13 +151,7 @@ misc_base_config() {
     # Create UCI directory
     [ ! -d "$uci_dir" ] && mkdir -p "$uci_dir"
 
-    if [[ "${TARGET_BUILD:-}" == "s905x-b860h" || "${TARGET_BUILD:-}" == "s905x" ]]; then
-        log "INFO" "WIFIOFF target detected"
-        wget --no-check-certificate -q -O "$uci_dir/99-init-settings.sh" "https://raw.githubusercontent.com/syntax-xidz/contenx/main/xidz/wifioff/99-init-settings.sh" || log "WARN" "WIFIOFF init script failed"
-    else
-        log "INFO" "Standard target detected"
-        wget --no-check-certificate -q -O "$uci_dir/99-init-settings.sh" "https://raw.githubusercontent.com/syntax-xidz/contenx/main/xidz/wifion/99-init-settings.sh" || log "WARN" "Standard init script failed"
-    fi
+    [ -f "$uci_dir/99-init-settings.sh" ] && chmod 755 "$uci_dir/99-init-settings.sh"
     # Apply ANUx-WRT Performance & Stability Settings (uhttpd & rpcd tweaks)
     cat << 'EOF' > "$uci_dir/90-anux-settings.sh"
 #!/bin/sh
@@ -274,7 +272,7 @@ run_packages() {
         "luci-theme-vantage|https://api.github.com/repos/anothaDev/luci-theme-vantage/releases/latest"
         "luci-app-vantage|https://api.github.com/repos/anothaDev/luci-theme-vantage/releases/latest"
         "luci-theme-luxe|https://api.github.com/repos/de-quenx/luci-theme-luxe/releases/latest"
-        "luci-theme-argon|https://api.github.com/repos/de-quenx/luci-theme-argon/releases/latest"
+        "luci-theme-argon|https://api.github.com/repos/jerrykuku/luci-theme-argon/releases/latest"
         "luci-app-temp-status|https://api.github.com/repos/de-quenx/kwrt-packages/releases/latest"
         "luci-app-netmonitor|https://api.github.com/repos/de-quenx/luci-app-netmonitor/releases/latest"
         "luci-app-ttl|https://api.github.com/repos/de-quenx/custom-x/releases/latest"
