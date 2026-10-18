@@ -154,19 +154,8 @@ env:
   SECRET_KEY: ${{ secrets.SECRET_KEY }}
 
 jobs:
-  auth:
-    name: auth Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: auth
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ -z "$SECRET_KEY" ]; then gh run cancel ${{ github.run_id }} && sleep 10; fi
-
   orchestrator:
     name: Dispatch Multi-Tunnel Builds
-    needs: auth
     if: inputs.tunnel == 'all-tunnel-v2' || inputs.tunnel == 'all-tunnel-v1'
     runs-on: ubuntu-latest
     steps:
@@ -177,6 +166,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ env.SECRET_KEY }}
         run: |
+          if [ -z "$SECRET_KEY" ]; then
+            echo "::error::Option '${{ inputs.tunnel }}' requires SECRET_KEY (Personal Access Token with repo & workflow scopes) configured in Repository Secrets."
+            exit 1
+          fi
           if [ "${{ inputs.tunnel }}" == "all-tunnel-v2" ]; then
             TUNNELS=("no-tunnel" "openclash" "openclash-passwallssh" "openclash-qtun" "openclash-nikki" "openclash-fusiontunx" "openclash-passwall")
           elif [ "${{ inputs.tunnel }}" == "all-tunnel-v1" ]; then
@@ -195,7 +188,6 @@ jobs:
           done
 
   prebuild:
-    needs: auth
     if: inputs.tunnel != 'all-tunnel-v2' && inputs.tunnel != 'all-tunnel-v1'
     runs-on: ubuntu-latest
     name: Setup ${{ inputs.release_branch }}
@@ -304,7 +296,7 @@ jobs:
         if: steps.setupenv.outputs.status == 'success'
         uses: softprops/action-gh-release@v3
         env:
-          GITHUB_TOKEN: ${{ env.SECRET_KEY }}
+          GITHUB_TOKEN: ${{ secrets.SECRET_KEY || secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.setupenv.outputs.release_tag }}
           name: ${{ steps.setupenv.outputs.release_name }}
@@ -667,7 +659,7 @@ jobs:
         if: steps.beforeupload.outputs.status == 'success'
         uses: softprops/action-gh-release@v3
         env:
-          GITHUB_TOKEN: ${{ env.SECRET_KEY }}
+          GITHUB_TOKEN: ${{ secrets.SECRET_KEY || secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: ${{ env.RELEASE_NAME }}
