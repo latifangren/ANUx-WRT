@@ -635,7 +635,7 @@ run_makeimage() {
     # Base system & LuCI
     PACKAGES+=" dnsmasq-full libc block-mount zram-swap zoneinfo-core zoneinfo-asia bash screen uhttpd uhttpd-mod-ubus \
     luci luci-ssl luci-base luci-compat luci-mod-admin-full luci-mod-network \
-    luci-mod-system luci-mod-status luci-app-firewall luci-app-opkg openssh-sftp-server adb curl wget-ssl \
+    luci-mod-system luci-mod-status rpcd-mod-iwinfo luci-app-firewall luci-app-opkg openssh-sftp-server adb curl wget-ssl \
     httping htop jq tar unzip coreutils-base64 coreutils-sleep coreutils-stat coreutils-stty "
     
     # Networking & USB modem drivers
