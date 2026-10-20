@@ -120,16 +120,13 @@ on:
           - all-tunnel-v2
           - all-tunnel-v1
           - no-tunnel
-          - openclash-qtun
           - openclash-nikki
           - openclash-fusiontunx
           - openclash-passwall
           - openclash-clashoo
-          - openclash-passwallssh
           - openclash
           - nikki
           - passwall
-          - qtun
           - fusiontunx
           - clashoo
       clean:
@@ -137,6 +134,15 @@ on:
         required: false
         default: "true"
         type: boolean
+
+concurrency:
+  group: builds-${{ inputs.release_branch }}-${{ inputs.target }}-${{ inputs.tunnel }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
 
 permissions:
   actions: write
@@ -152,6 +158,7 @@ env:
   TUNNEL: ${{ inputs.tunnel }}
   CLEAN: ${{ inputs.clean }}
   SECRET_KEY: ${{ secrets.SECRET_KEY }}
+
 
 jobs:
   orchestrator:
@@ -171,9 +178,9 @@ jobs:
             exit 1
           fi
           if [ "${{ inputs.tunnel }}" == "all-tunnel-v2" ]; then
-            TUNNELS=("no-tunnel" "openclash" "openclash-passwallssh" "openclash-qtun" "openclash-nikki" "openclash-fusiontunx" "openclash-passwall")
+            TUNNELS=("no-tunnel" "openclash" "openclash-nikki" "openclash-fusiontunx" "openclash-passwall" "openclash-clashoo")
           elif [ "${{ inputs.tunnel }}" == "all-tunnel-v1" ]; then
-            TUNNELS=("openclash" "nikki" "passwall" "qtun" "fusiontunx" "clashoo")
+            TUNNELS=("openclash" "nikki" "passwall" "fusiontunx" "clashoo")
           fi
           
           for t in "${TUNNELS[@]}"; do
@@ -317,6 +324,7 @@ jobs:
       DATETIME: ${{ needs.prebuild.outputs.datetime }}
       RELEASE_NAME: ${{ needs.prebuild.outputs.release_name }}
       RELEASE_TAG: ${{ needs.prebuild.outputs.release_tag }}
+      GH_API_TOKEN: ${{ secrets.SECRET_KEY || secrets.GITHUB_TOKEN }}
     strategy:
       fail-fast: false
       max-parallel: 2
@@ -334,7 +342,17 @@ jobs:
           
           sudo -E apt-get -y update
           sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
-          sudo -E apt-get -y install dos2unix zstd xz-utils $(curl -fsSL https://ophub.org/ubuntu2404-make-openwrt-depends)
+          sudo -E apt-get -y install ack antlr3 aria2 asciidoc autoconf automake autopoint binutils bison \
+            btrfs-progs build-essential bzip2 ca-certificates ccache clang cmake coreutils cpio curl \
+            device-tree-compiler ecj fakeroot fastjar flex g++-multilib gawk gcc-multilib genisoimage gettext \
+            git gnutls-dev gperf gzip haveged help2man intltool irqbalance jq lib32gcc-s1 libc6-dev-i386 \
+            libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev \
+            libncurses-dev libncurses5-dev libncursesw5-dev libnsl-dev libpython3-dev libreadline-dev \
+            libssl-dev libtool libyaml-dev libz-dev llvm lrzsz msmtp nano ninja-build ntpdate p7zip p7zip-full \
+            patch pigz pkgconf python3 python3-cryptography python3-docutils python3-pip python3-ply \
+            python3-pyelftools python3-requests python3-setuptools qemu-utils quilt re2c rsync scons sharutils \
+            squashfs-tools subversion swig tar texinfo uglifyjs unzip upx-ucl vim wget xmlto xsltproc xxd \
+            xz-utils yasm zip zlib1g-dev zstd dos2unix
           sudo -E systemctl daemon-reload
           sudo -E apt-get -y autoremove --purge && sudo -E apt-get clean
           

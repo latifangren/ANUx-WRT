@@ -33,19 +33,25 @@ main() {
 
     # Repos
     echo "Applying custom repos."
-    if [ -f /etc/opkg.conf ]; then
-        local arch os_ver
-        arch=$(grep "OPENWRT_ARCH" /etc/os-release | awk -F '"' '{print $2}')
-        os_ver=$(grep "VERSION_ID" /etc/os-release | awk -F '"' '{print $2}' | awk -F. '{print $1"."$2}')
-        
-        # Override version 23.05 to 24.10
-        [ "$os_ver" = "23.05" ] && os_ver="24.10"
-        
+    arch=$(grep "OPENWRT_ARCH" /etc/os-release | awk -F '"' '{print $2}')
+    os_ver=$(grep "VERSION_ID" /etc/os-release | awk -F '"' '{print $2}' | awk -F. '{print $1"."$2}')
+
+    # Override version 23.05 to 24.10 (kiddin9 has no 23.05 feed)
+    [ "$os_ver" = "23.05" ] && os_ver="24.10"
+
+    if [ -f /etc/apk/repositories.list ] || [ -d /etc/apk/repositories.d ]; then
+        # OpenWrt/ImmortalWrt 25.12+ uses apk
+        mkdir -p /etc/apk/repositories.d
+        echo "https://dl.openwrt.ai/releases/${os_ver}/packages/${arch}/kiddin9" \
+            > /etc/apk/repositories.d/kiddin9.list
+        echo "Custom apk repository integrated."
+    elif [ -f /etc/opkg.conf ]; then
         sed -i 's/option check_signature/# option check_signature/g' /etc/opkg.conf
-        echo "src/gz custom_packages https://dl.openwrt.ai/packages-${os_ver}/${arch}/kiddin9/" >> /etc/opkg/customfeeds.conf
-        echo "Custom repo integrated."
+        echo "src/gz custom_packages https://dl.openwrt.ai/releases/${os_ver}/packages/${arch}/kiddin9/" \
+            >> /etc/opkg/customfeeds.conf
+        echo "Custom opkg repository integrated."
     else
-        echo "opkg.conf not found. Skipping."
+        echo "No known package manager found. Skipping custom repos."
     fi
     
     # Set default root password to root

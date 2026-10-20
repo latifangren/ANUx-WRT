@@ -44,82 +44,12 @@ misc_permissions() {
     fi
 }
 
-# Download CLI scripts
-misc_download_scripts() {
-    log "INFO" "Downloading CLI scripts"
-    local scripts=(
-        "https://raw.githubusercontent.com/latifangren/contenx/main/xcli/syntax|files/usr/bin"
-        "https://raw.githubusercontent.com/latifangren/contenx/main/xcli/x-gpio|files/usr/bin"
-        "https://raw.githubusercontent.com/latifangren/contenx/main/xcli/xidz|files/usr/bin"
-        "https://raw.githubusercontent.com/latifangren/contenx/main/xcli/xdev|files/usr/bin"
-        "https://raw.githubusercontent.com/latifangren/contenx/main/xcli/x-gpioled|files/usr/bin"
-        "https://raw.githubusercontent.com/latifangren/contenx/main/xcli/xidzs|files/etc/init.d"
-    )
-    for s in "${scripts[@]}"; do
-        IFS='|' read -r url path <<< "$s"
-        mkdir -p "$path"
-        wget --no-check-certificate -nv -P "$path" "$url" || wget --no-check-certificate -nv -P "$path" "${url/latifangren/syntax-xidz}" || log "WARN" "Download failed: $url"
-    done
-}
-
-# Download QModem
-misc_download_qmodem() {
-    # Skip for unsupported architectures
-    if [[ ! ( "${ARCH_1:-}" == "armv6" || \
-              "${ARCH_1:-}" == "armv7" || \
-              "${ARCH_1:-}" == "386" ) ]]; then
-        log "INFO" "Downloading QModem packages"
-        
-        # Format architecture string
-        local arch_fmt="${ARCH_3//_/-}"
-        
-        # Format generic aarch64
-        if [[ "$arch_fmt" == "aarch64-generic" ]]; then
-            arch_fmt="${arch_fmt}-armv8"
-        fi
-
-        # Determine package extension by OS version
-        local pkg_ext=""
-        local v_suf=""
-        case "${VEROP:-}" in
-            "25.12") pkg_ext="apk"; v_suf="V25" ;;
-            "24.10") pkg_ext="ipk"; v_suf="V24" ;;
-            "23.05") pkg_ext="ipk"; v_suf="V23" ;;
-            *) log "WARN" "OS version not supported: ${VEROP}"; return 1 ;;
-        esac
-        
-        # Generate download URL
-        local qmodem_url="https://raw.githubusercontent.com/latifangren/contenx/main/xmodem/QModem-${arch_fmt}_${pkg_ext}_${v_suf}.zip"
-
-        log "INFO" "Fetching QModem: $qmodem_url"
-        wget --no-check-certificate -q "$qmodem_url" -O qmodem.zip || wget --no-check-certificate -q "${qmodem_url/latifangren/syntax-xidz}" -O qmodem.zip
-        
-        if [[ -f "qmodem.zip" ]]; then
-            mkdir -p packages
-            unzip -q -o qmodem.zip -d packages/
-            rm -f qmodem.zip
-            log "SUCCESS" "QModem packages extracted"
-        else
-            log "WARN" "Failed to download QModem"
-        fi
-    else
-        log "INFO" "QModem skipped: architecture ${ARCH_1} unsupported"
-    fi
-}
-
 # Set executable permissions
 misc_file_perms() {
     log "INFO" "Setting file permissions"
     local exec_files=(
-        "files/etc/init.d/xidzs"
-        "files/etc/init.d/repair_ro"
         "files/sbin/free.sh"
         "files/sbin/repair_ro"
-        "files/usr/bin/xdev"
-        "files/usr/bin/xidz"
-        "files/usr/bin/syntax"
-        "files/usr/bin/x-gpio"
-        "files/usr/bin/x-gpioled"
         "files/usr/bin/repair_ro"
     )
     for f in "${exec_files[@]}"; do [ -f "$f" ] && chmod 755 "$f"; done
@@ -181,13 +111,61 @@ misc_amlogic() {
     fi
 }
 
+# Materialize shared Clash assets into each tunnel's expected layout.
+#
+# The four tunnel engines (OpenClash, Nikki, Clashoo, FusionTunX) all consume
+# the same rule sets, proxy provider templates and geodata databases, but each
+# expects them under its own directory names. Those files used to be committed
+# once per tunnel, which triplicated ~68 MB of geodata and ~3.5 MB of rules in
+# git. They now live in a single canonical directory and are copied out here,
+# once per build, into only the tunnel that is actually being packaged.
+materialize_shared_assets() {
+    local shared="files/usr/share/anux/clash"
+    [ -d "$shared" ] || { log "INFO" "No shared Clash assets to materialize"; return 0; }
+
+    # Tunnel root|assets subdir|geodata dir
+    local -a targets=(
+        "files/etc/openclash|rule_provider,proxy_provider|."
+        "files/etc/nikki/run|providers/rule,providers/proxy|."
+        "files/etc/clashoo|ruleprovider,proxyprovider|."
+        "files/etc/fusiontunx|rule_providers,proxy_providers|."
+    )
+
+    for entry in "${targets[@]}"; do
+        IFS='|' read -r root subdirs geo_dir <<< "$entry"
+        [ -d "$root" ] || continue
+
+        IFS=',' read -r -a subs <<< "$subdirs"
+        for sub in "${subs[@]}"; do
+            local src
+            case "$sub" in
+                providers/rule|rule_providers|ruleprovider) src="$shared/rule_provider" ;;
+                providers/proxy|proxy_providers|proxyprovider) src="$shared/proxy_provider" ;;
+                *)               src="$shared/$sub" ;;
+            esac
+            [ -d "$src" ] || continue
+            mkdir -p "${root}/${sub}"
+            # copy-if-absent: a file already committed in a tunnel directory is a
+            # deliberate engine-specific variant (e.g. FusionTunX's richer id.yaml
+            # carrying FR/FR2 nodes) and must never be overwritten.
+            cp -rn "$src"/* "${root}/${sub}/" 2>/dev/null || true
+        done
+
+        # Geodata databases (geoip.dat / geosite.dat / Country.mmdb)
+        if [ -n "$geo_dir" ] && [ -d "$shared/geodata" ]; then
+            mkdir -p "${root}/${geo_dir}"
+            cp -f "$shared/geodata"/* "${root}/${geo_dir}/" 2>/dev/null || true
+        fi
+    done
+
+    log "SUCCESS" "Shared Clash assets materialized"
+}
+
 # Setup
 run_misc() { 
     misc_init
     misc_branch
     misc_permissions
-    misc_download_scripts
-    #misc_download_qmodem
     misc_file_perms
     misc_base_config
     misc_amlogic
@@ -271,17 +249,11 @@ run_packages() {
         "luci-theme-footstrap|https://api.github.com/repos/VizzleTF/luci-theme-footstrap/releases/latest"
         "luci-theme-vantage|https://api.github.com/repos/anothaDev/luci-theme-vantage/releases/latest"
         "luci-app-vantage|https://api.github.com/repos/anothaDev/luci-theme-vantage/releases/latest"
-        "luci-theme-luxe|https://api.github.com/repos/de-quenx/luci-theme-luxe/releases/latest"
         "luci-theme-argon|https://api.github.com/repos/jerrykuku/luci-theme-argon/releases/latest"
-        "luci-app-temp-status|https://api.github.com/repos/de-quenx/kwrt-packages/releases/latest"
-        "luci-app-netmonitor|https://api.github.com/repos/de-quenx/luci-app-netmonitor/releases/latest"
-        "luci-app-tinyfm|https://api.github.com/repos/de-quenx/luci-app-tinyfm/releases/latest"
-        "luci-app-ttl|https://api.github.com/repos/de-quenx/custom-x/releases/latest"
-        "luci-app-ipinfo|https://api.github.com/repos/de-quenx/luci-app-ipinfo/releases/latest"
         "luci-app-tailscale|https://api.github.com/repos/asvow/luci-app-tailscale/releases/latest"
         "luci-app-5gmodem|https://api.github.com/repos/fildunsky/luci-app-5gmodem/releases/latest"
-        "ookla-speedtest-{arch_3}|https://api.github.com/repos/de-quenx/kwrt-packages/releases/latest"
-        "luci-app-poweroffdevice|https://api.github.com/repos/de-quenx/luci-app-poweroffdevice/releases/latest"
+        "luci-app-filebrowser|${REPOS[KIDDIN9]}"
+        "filebrowser|${REPOS[KIDDIN9]}"
         #"luci-app-3ginfo-lite|https://api.github.com/repos/4IceG/luci-app-3ginfo-lite/releases/latest"
         #"luci-app-sms-tool-js|https://api.github.com/repos/4IceG/luci-app-sms-tool-js/releases/latest"
         #"modemdata|https://api.github.com/repos/4IceG/luci-app-modemdata/releases/latest"
@@ -410,8 +382,8 @@ run_tunnel() {
     if [[ "${ARCH_3}" == "x86_64" ]]; then meta_file="mihomo-linux-${ARCH_1}-compatible"; fi
     
     setup_openclash() {
-        local oc_core=$(curl -s "https://api.github.com/repos/MetaCubeX/mihomo/releases/latest" | jq -r '.assets[].browser_download_url' | grep -oE "https.*${meta_file}-v[0-9]+\.[0-9]+\.[0-9]+\.gz" | head -n 1)
-        local oc_ipk=$(curl -s "https://api.github.com/repos/Yogxx/OpenClash/releases" | jq -r '.[0].assets[].browser_download_url' | grep -iE "luci-app-openclash.*\.${pkg_ext}$" | head -n 1)
+        local oc_core=$(gh_curl "https://api.github.com/repos/MetaCubeX/mihomo/releases/latest" | jq -r '.assets[].browser_download_url' | grep -oE "https.*${meta_file}-v[0-9]+\.[0-9]+\.[0-9]+\.gz" | head -n 1)
+        local oc_ipk=$(gh_curl "https://api.github.com/repos/Yogxx/OpenClash/releases" | jq -r '.[0].assets[].browser_download_url' | grep -iE "luci-app-openclash.*\.${pkg_ext}$" | head -n 1)
         [[ -z "$oc_core" || -z "$oc_ipk" ]] && { log "ERROR" "OpenClash URL not found"; return 1; }
         
         local clean_name=$(basename "${oc_ipk}" | sed -E 's/^[0-9\.\+\-_]+luci-app/luci-app/')
@@ -420,7 +392,7 @@ run_tunnel() {
         
         gzip -d "files/etc/openclash/core/clash_meta.gz"
         chmod 755 "files/etc/openclash/core/clash_meta" "files/etc/openclash/Country.mmdb" "files/etc/openclash/geoip.dat" "files/etc/openclash/geosite.dat"
-        sed -i "/# Tunnel/a \    ln -sf /etc/openclash/history/xidzs.db /etc/openclash/cache.db\n    ln -sf /etc/openclash/core/clash_meta /etc/openclash/clash" "files/etc/uci-defaults/99-init-settings.sh"
+        sed -i "/# Tunnel/a \    ln -sf /etc/openclash/core/clash_meta /etc/openclash/clash" "files/etc/uci-defaults/99-init-settings.sh"
     }
     
     setup_passwall() {
@@ -431,10 +403,10 @@ run_tunnel() {
             pw_search="23\.05-24\.10_luci-app-passwall"
         fi
         
-        local pw_ipk=$(curl -s "https://api.github.com/repos/Openwrt-Passwall/openwrt-passwall/releases/latest" | jq -r '.assets[].browser_download_url' | grep -iE "${pw_search}.*\.${pkg_ext}$" | head -n 1)
+        local pw_ipk=$(gh_curl "https://api.github.com/repos/Openwrt-Passwall/openwrt-passwall/releases/latest" | jq -r '.assets[].browser_download_url' | grep -iE "${pw_search}.*\.${pkg_ext}$" | head -n 1)
         
         # General release fallback
-        [[ -z "$pw_ipk" ]] && pw_ipk=$(curl -s "https://api.github.com/repos/Openwrt-Passwall/openwrt-passwall/releases/latest" | jq -r '.assets[].browser_download_url' | grep -iE "luci-app-passwall.*\.${pkg_ext}$" | head -n 1)
+        [[ -z "$pw_ipk" ]] && pw_ipk=$(gh_curl "https://api.github.com/repos/Openwrt-Passwall/openwrt-passwall/releases/latest" | jq -r '.assets[].browser_download_url' | grep -iE "luci-app-passwall.*\.${pkg_ext}$" | head -n 1)
         
         [[ -z "$pw_ipk" ]] && { log "ERROR" "Passwall URL not found"; return 1; }
         
@@ -455,7 +427,7 @@ run_tunnel() {
         local nikki_ver="${VEROP:-24.10}"
         [[ "$nikki_ver" == "23.05" ]] && nikki_ver="24.10"
         
-        local nikki_url=$(curl -s "https://api.github.com/repos/Yogxx/OpenWrt-nikkiku/releases" | jq -r '.[0].assets[].browser_download_url' | grep -oE "https.*nikki_${ARCH_3}-openwrt-${nikki_ver}.*\.tar.gz" | head -n 1)
+        local nikki_url=$(gh_curl "https://api.github.com/repos/Yogxx/OpenWrt-nikkiku/releases" | jq -r '.[0].assets[].browser_download_url' | grep -oE "https.*nikki_${ARCH_3}-openwrt-${nikki_ver}.*\.tar.gz" | head -n 1)
         [[ -z "$nikki_url" ]] && { log "ERROR" "Nikki URL not found"; return 1; }
         
         local n_file=$(basename "${nikki_url}")
@@ -468,8 +440,8 @@ run_tunnel() {
         local ft_prefix="fusiontunx_"
         [[ "$pkg_ext" == "apk" ]] && ft_prefix="fusiontunx-"
         
-        local ft_ipk=$(curl -s "https://api.github.com/repos/bobbyunknown/FusionTunX/releases" | jq -r '.[0].assets[].browser_download_url' | grep -iE "luci-app-fusiontunx.*\.${pkg_ext}$" | head -n 1)
-        local ft_core=$(curl -s "https://api.github.com/repos/bobbyunknown/FusionTunX/releases" | jq -r '.[0].assets[].browser_download_url' | grep -iE "${ft_prefix}[^\"]*${ARCH_3}[^\"]*\.${pkg_ext}$" | head -n 1)
+        local ft_ipk=$(gh_curl "https://api.github.com/repos/bobbyunknown/FusionTunX/releases" | jq -r '.[0].assets[].browser_download_url' | grep -iE "luci-app-fusiontunx.*\.${pkg_ext}$" | head -n 1)
+        local ft_core=$(gh_curl "https://api.github.com/repos/bobbyunknown/FusionTunX/releases" | jq -r '.[0].assets[].browser_download_url' | grep -iE "${ft_prefix}[^\"]*${ARCH_3}[^\"]*\.${pkg_ext}$" | head -n 1)
         [[ -z "$ft_ipk" || -z "$ft_core" ]] && { log "ERROR" "FusionTunX URL not found"; return 1; }
         
         local clean_name=$(basename "${ft_ipk}" | sed -E 's/^[0-9\.\+\-_]+luci-app/luci-app/')
@@ -484,33 +456,12 @@ run_tunnel() {
         ariadl "${ft_core}" "packages/${core_name}"
     }
     
-    setup_qtun() {
-        local qtun_search="luci-app-qtun_.*_${ARCH_3}\.${pkg_ext}$"
-        local qtun_url=$(curl -s "https://api.github.com/repos/de-quenx/luci-app-qtun/releases/latest" | jq -r '.assets[].browser_download_url' | grep -iE "${qtun_search}" | head -n 1)
-        [[ -z "$qtun_url" ]] && { log "ERROR" "Qtun URL not found"; return 1; }
-        
-        local clean_name=$(basename "${qtun_url}" | sed -E "s/_${ARCH_3}//")
-        
-        if [[ "$pkg_ext" == "apk" ]]; then
-            clean_name="${clean_name/_/-}"
-            if [[ "$clean_name" =~ -([0-9]+)\.apk$ ]]; then
-                clean_name="${clean_name/-${BASH_REMATCH[1]}.apk/-r${BASH_REMATCH[1]}.apk}"
-            elif [[ ! "$clean_name" =~ -r[0-9]+\.apk$ ]]; then
-                clean_name="${clean_name/.apk/-r1.apk}"
-            fi
-        else
-            [[ ! "$clean_name" =~ -[0-9]+\.ipk$ ]] && clean_name="${clean_name/.ipk/-1.ipk}"
-        fi
-        
-        ariadl "${qtun_url}" "packages/${clean_name}"
-    }
-    
     setup_clashoo() {
         local co_prefix="clashoo_"
         [[ "$pkg_ext" == "apk" ]] && co_prefix="clashoo-"
         
-        local co_ipk=$(curl -s "https://api.github.com/repos/kenzok8/openwrt-clashoo/releases/latest" | jq -r '.assets[].browser_download_url' | grep -iE "luci-app-clashoo.*(${ARCH_3}|all)\.${pkg_ext}$" | head -n 1)
-        local co_core=$(curl -s "https://api.github.com/repos/kenzok8/openwrt-clashoo/releases/latest" | jq -r '.assets[].browser_download_url' | grep -iE "${co_prefix}[^\"]*${ARCH_3}\.${pkg_ext}$" | grep -vi "luci-app" | head -n 1)
+        local co_ipk=$(gh_curl "https://api.github.com/repos/kenzok8/openwrt-clashoo/releases/latest" | jq -r '.assets[].browser_download_url' | grep -iE "luci-app-clashoo.*(${ARCH_3}|all)\.${pkg_ext}$" | head -n 1)
+        local co_core=$(gh_curl "https://api.github.com/repos/kenzok8/openwrt-clashoo/releases/latest" | jq -r '.assets[].browser_download_url' | grep -iE "${co_prefix}[^\"]*${ARCH_3}\.${pkg_ext}$" | grep -vi "luci-app" | head -n 1)
         [[ -z "$co_ipk" || -z "$co_core" ]] && { log "ERROR" "Clashoo URL not found"; return 1; }
         
         local clean_name=$(basename "${co_ipk}" | sed -E 's/^[0-9\.\+\-_]+luci-app/luci-app/')
@@ -535,49 +486,6 @@ run_tunnel() {
         chmod 755 "files/etc/clashoo/Country.mmdb" "files/etc/clashoo/geoip.dat" "files/etc/clashoo/geosite.dat"
     }
     
-    setup_passwallssh() {
-        local ver_major="${VEROP%%.*}"
-        [[ -z "$ver_major" ]] && ver_major="24"
-        
-        # OS 23.05 version override
-        if [[ "${VEROP:-}" == "23.05" ]]; then
-            ver_major="24"
-        fi
-        
-        # Regex to prevent architecture mismatch
-        local pwssh_search="passwall-ssh_${ver_major}_[0-9\.]+_${ARCH_3}\.${pkg_ext}$"
-        local pwssh_url=$(curl -s "https://api.github.com/repos/de-quenx/Passwall-SSH/releases/latest" | jq -r '.assets[].browser_download_url' | grep -iE "${pwssh_search}" | head -n 1)
-        
-        # Generic fallback
-        [[ -z "$pwssh_url" ]] && pwssh_url=$(curl -s "https://api.github.com/repos/de-quenx/Passwall-SSH/releases/latest" | jq -r '.assets[].browser_download_url' | grep -iE "passwall-ssh_[0-9]+_[0-9\.]+_${ARCH_3}\.${pkg_ext}$" | head -n 1)
-        
-        [[ -z "$pwssh_url" ]] && { log "ERROR" "Passwall-SSH URL not found"; return 1; }
-        
-        local raw_name=$(basename "${pwssh_url}")
-        local clean_name="${raw_name}"
-        
-        # Normalize package name
-        if [[ "$raw_name" =~ passwall-ssh_[0-9]+_([0-9\.]+)_${ARCH_3}\.(${pkg_ext})$ ]]; then
-            local version="${BASH_REMATCH[1]}"
-            if [[ "$pkg_ext" == "apk" ]]; then
-                clean_name="passwall-ssh-${version}-r1.apk"
-            else
-                clean_name="passwall-ssh-${version}-1.ipk"
-            fi
-        else
-            # Regex fallback
-            clean_name=$(echo "$raw_name" | sed -E "s/_[0-9]+_/-/" | sed -E "s/_${ARCH_3}//")
-            if [[ "$pkg_ext" == "apk" ]]; then
-                clean_name="${clean_name/_/-}"
-                [[ ! "$clean_name" =~ -r[0-9]+\.apk$ ]] && clean_name="${clean_name/.apk/-r1.apk}"
-            else
-                [[ ! "$clean_name" =~ -[0-9]+\.ipk$ ]] && clean_name="${clean_name/.ipk/-1.ipk}"
-            fi
-        fi
-        
-        ariadl "${pwssh_url}" "packages/${clean_name}"
-    }
-    
     clean_oc() { rm -rf "files/etc/openclash"; }
     clean_pw() { rm -f "files/etc/config/passwall"; }
     clean_nk() { rm -rf "files/etc/nikki" "files/etc/config/nikki"; }
@@ -586,32 +494,24 @@ run_tunnel() {
     
     case "${mode}" in
         openclash) setup_openclash; clean_pw; clean_nk; clean_ft; clean_co ;;
-        qtun) setup_qtun; clean_oc; clean_pw; clean_nk; clean_ft; clean_co ;;
         nikki) setup_nikki; clean_oc; clean_pw; clean_ft; clean_co ;;
         fusiontunx) setup_fusiontunx; clean_oc; clean_pw; clean_nk; clean_co ;;
         passwall) setup_passwall; clean_oc; clean_nk; clean_ft; clean_co ;;
         clashoo) setup_clashoo; clean_oc; clean_pw; clean_nk; clean_ft ;;
-        passwallssh) setup_passwallssh; clean_oc; clean_pw; clean_nk; clean_ft; clean_co ;;
         nikki-passwall) setup_nikki; setup_passwall; clean_oc; clean_ft; clean_co ;;
         nikki-fusiontunx) setup_nikki; setup_fusiontunx; clean_oc; clean_pw; clean_co ;;
-        nikki-qtun) setup_nikki; setup_qtun; clean_oc; clean_pw; clean_ft; clean_co ;;
-        passwall-qtun) setup_passwall; setup_qtun; clean_oc; clean_nk; clean_ft; clean_co ;;
-        fusiontunx-qtun) setup_fusiontunx; setup_qtun; clean_oc; clean_pw; clean_nk; clean_co ;;
         openclash-nikki) setup_openclash; setup_nikki; clean_pw; clean_ft; clean_co ;;
-        openclash-qtun) setup_openclash; setup_qtun; clean_pw; clean_nk; clean_ft; clean_co ;;
         openclash-passwall) setup_openclash; setup_passwall; clean_nk; clean_ft; clean_co ;;
         openclash-fusiontunx) setup_openclash; setup_fusiontunx; clean_pw; clean_nk; clean_co ;;
         clashoo-passwall) setup_clashoo; setup_passwall; clean_oc; clean_nk; clean_ft ;;
-        clashoo-qtun) setup_clashoo; setup_qtun; clean_oc; clean_pw; clean_nk; clean_ft ;;
         clashoo-fusiontunx) setup_clashoo; setup_fusiontunx; clean_oc; clean_pw; clean_nk ;;
         openclash-clashoo) setup_openclash; setup_clashoo; clean_pw; clean_nk; clean_ft ;;
         openclash-nikki-passwall) setup_openclash; setup_nikki; setup_passwall; clean_ft; clean_co ;;
-        openclash-passwallssh) setup_openclash; setup_passwallssh; clean_pw; clean_nk; clean_ft; clean_co ;;
-        nikki-passwallssh) setup_nikki; setup_passwallssh; clean_oc; clean_pw; clean_ft; clean_co ;;
         no-tunnel) clean_oc; clean_pw; clean_nk; clean_ft; clean_co ;;
         *) error_msg "Invalid tunnel option: ${mode}" ;;
     esac
     log "SUCCESS" "Tunnel configured successfully: ${mode}"
+    materialize_shared_assets
     
     # List downloaded packages
     log "INFO" "Packages directory contents:"
@@ -624,7 +524,7 @@ run_makeimage() {
     local tunnel_option="${2:-}"
     local build_files="files"
     local PACKAGES=""
-    local DISABLED_SERVICES="xidzs anux zram"
+    local DISABLED_SERVICES="anux"
     local EXCLUDED=""
     
     log "INFO" "Starting ImageBuilder for: $target_profile [Tunnel: ${tunnel_option:-none}]"
@@ -661,26 +561,21 @@ run_makeimage() {
     
     # Modem tools & info
     # Note: luci-app-5gmodem is installed via packages_core (download_packages)
-    # Note: sms-tool package (from 4IceG/sms-tool) is not available - 404
-    # SMS/AT functionality is covered by sms-tool_q (in QMODEM) and luci-app-sms-tool-js
-    local MODEM="luci-app-lite-watchdog" # modemband luci-app-modemband luci-app-sms-tool-js luci-app-3ginfo-lite modemdata luci-app-modemdata
-    
-    # QModem tools
-    local QMODEM="ubus-at-daemon sms-tool_q ndisc6 quectel-CM-5G-M qmodem tom_modem sms-forwarder-next luci-app-qmodem-next"
+    # Note: the standalone sms-tool package (4IceG/sms-tool) is no longer published; upstream 404s.
+    # SMS/AT is instead covered by luci-app-5gmodem's built-in AT terminal + USSD/SMS inbox.
+    local MODEM="luci-app-lite-watchdog"
 
-    local STATS="vnstat2 vnstati2 luci-app-netmonitor"
-    
-    # File Manager (TinyFM with built-in editor)
-    local FILEMANAGER="luci-app-tinyfm"
-    
+    # Network traffic statistics (vnstat is from the official OpenWrt feed)
+    local STATS="vnstat2 vnstati2"
+
     # Performance & Hardware Monitoring (from Kwrt)
     local PERF="kmod-tcp-bbr kmod-lib-zstd"
     # UI themes
-    local THEME="luci-theme-footstrap luci-theme-vantage luci-app-vantage luci-theme-argon luci-theme-luxe"
-    
-    # Misc utilities
-    local OTHER="luci-app-ramfree ttyd luci-app-ttyd luci-app-ttl luci-app-ipinfo luci-app-eqosplus tailscale luci-app-tailscale ookla-speedtest luci-app-poweroffdevice"
-    
+    local THEME="luci-theme-footstrap luci-theme-vantage luci-app-vantage luci-theme-argon"
+
+    # File Manager & Utilities
+    local FILEMANAGER="filebrowser luci-app-filebrowser"
+    local OTHER="luci-app-ramfree ttyd luci-app-ttyd luci-app-eqosplus tailscale luci-app-tailscale"
     # Internet connection detector
     local INTERNETD="internet-detector internet-detector-mod-modem-restart luci-app-internet-detector"
     if [[ "${VEROP:-}" == "25.12" ]]; then
@@ -691,16 +586,7 @@ run_makeimage() {
     fi
     
     # all packages variable
-    PACKAGES+=" ${STORAGE} ${MODEM} ${INTERNETD} \
-    ${STATS} ${THEME} ${FILEMANAGER} ${PERF} ${OTHER} "
-    
-    # Check architecture support for QModem
-    if [[ ! ( "${ARCH_1:-}" == "armv6" || \
-              "${ARCH_1:-}" == "armv7" || \
-              "${ARCH_1:-}" == "386" ) ]]; then
-        PACKAGES+="" # ${QMODEM}
-    fi
-    
+    PACKAGES+=" ${STORAGE} ${MODEM} ${INTERNETD} ${STATS} ${THEME} ${FILEMANAGER} ${PERF} ${OTHER} "
     # atc packages
     if [[ "${VEROP:-}" == "23.05" || "${VEROP:-}" == "24.10" ]]; then
         # OS 23.05 / 24.10 packages
@@ -712,36 +598,23 @@ run_makeimage() {
     
     local OPENCLASH="luci-app-openclash"
     local NIKKI="mihomo-alpha nikki luci-app-nikki"
-    local QTUN="luci-app-qtun"
     local FUSIONTUNX="fusiontunx luci-app-fusiontunx"
-    local NEKO="luci-app-neko"
     local PASSWALL="chinadns-ng dns2socks tcping dns2tcp luci-app-passwall"
     local CLASHOO="clashoo luci-app-clashoo"
-    local PASSWALLSSH="passwall-ssh"
-    
+
     # VPN/Proxy tunnel
     case "$tunnel_option" in
         openclash) PACKAGES+=" $OPENCLASH " ;;
         nikki) PACKAGES+=" $NIKKI " ;;
-        neko) PACKAGES+=" $NEKO " ;;
         fusiontunx) PACKAGES+=" $FUSIONTUNX " ;;
         passwall) PACKAGES+=" $PASSWALL " ;;
-        qtun) PACKAGES+=" $QTUN " ;;
         clashoo) PACKAGES+=" $CLASHOO " ;;
-        passwallssh) PACKAGES+=" $PASSWALLSSH " ;;
-        openclash-passwallssh) PACKAGES+=" $OPENCLASH $PASSWALLSSH " ;;
-        nikki-passwallssh) PACKAGES+=" $NIKKI $PASSWALLSSH " ;;
         nikki-passwall) PACKAGES+=" $NIKKI $PASSWALL " ;;
         nikki-fusiontunx) PACKAGES+=" $NIKKI $FUSIONTUNX " ;;
-        nikki-qtun) PACKAGES+=" $NIKKI $QTUN " ;;
-        passwall-qtun) PACKAGES+=" $PASSWALL $QTUN " ;;
-        fusiontunx-qtun) PACKAGES+=" $FUSIONTUNX $QTUN " ;;
         openclash-nikki) PACKAGES+=" $OPENCLASH $NIKKI " ;;
         openclash-passwall) PACKAGES+=" $OPENCLASH $PASSWALL " ;;
         openclash-fusiontunx) PACKAGES+=" $OPENCLASH $FUSIONTUNX " ;;
-        openclash-qtun) PACKAGES+=" $OPENCLASH $QTUN " ;;
         clashoo-passwall) PACKAGES+=" $CLASHOO $PASSWALL " ;;
-        clashoo-qtun) PACKAGES+=" $CLASHOO $QTUN " ;;
         clashoo-fusiontunx) PACKAGES+=" $CLASHOO $FUSIONTUNX " ;;
         openclash-clashoo) PACKAGES+=" $OPENCLASH $CLASHOO " ;;
         openclash-nikki-passwall) PACKAGES+=" $OPENCLASH $NIKKI $PASSWALL " ;;
@@ -762,7 +635,6 @@ run_makeimage() {
     
     # Apply OpenWrt / ImmortalWrt packages
     if [[ "${BASE:-}" == "openwrt" ]]; then
-        PACKAGES+=" luci-app-temp-status "
         EXCLUDED+=" -dnsmasq "
     elif [[ "${BASE:-}" == "immortalwrt" ]]; then
         EXCLUDED+=" -dnsmasq -cpusage -automount -libustream-openssl -default-settings-chn -luci-i18n-base-zh-cn "
@@ -836,7 +708,7 @@ run_repack() {
     [[ "$b_type" == "--ophub" ]] && mkdir -p "${b_dir}/openwrt-armsr" || mkdir -p "${b_dir}/rootfs"
     
     local rf_files=("${output_dir}/"*"_${tunnel}-rootfs.tar.gz")
-    [[ ${#rf_files[@]} -ne 1 ]] && error_msg "Rootfs image not found"
+    [[ ! -f "${rf_files[0]}" ]] && error_msg "Rootfs image not found"
     
     local t_path="${b_dir}/rootfs/${BASE}-armsr-armv8-generic-rootfs.tar.gz"
     [[ "$b_type" == "--ophub" ]] && t_path="${b_dir}/openwrt-armsr/${BASE}-armsr-armv8-generic-rootfs.tar.gz"
@@ -1198,7 +1070,7 @@ run_rename() {
         done
         for file in *"${search}"*.tar.gz; do
             if [[ -f "$file" ]]; then
-                local new_name="ANUx-${OP_BASE}-${BRANCH}-${replace}-${TUNNEL}-${DATE}.img.gz"
+                local new_name="ANUx-${OP_BASE}-${BRANCH}-${replace}-${TUNNEL}-${DATE}-rootfs.tar.gz"
                 log "INFO" "Renaming: $file -> $new_name"
                 mv "$file" "$new_name" || log "WARN" "Rename failed: $file"
             fi

@@ -142,7 +142,9 @@ jobs:
                 }
               }
 
-              page++;
+              // Deleting from page N shifts the remaining items down, so the
+              // next unvisited page becomes N-1. Stay on the same page instead
+              // of incrementing, otherwise every other item survives.
             }
 
             console.log(`\nTotal artifacts deleted: ${totalDeleted}`);
@@ -195,7 +197,8 @@ jobs:
                   }
                 }
 
-                page++;
+                // Stay on this page: deletions shift the remainder down, so
+                // incrementing would skip every other cache.
               } catch (error) {
                 console.error(`Error fetching caches: ${error.message}`);
                 hasMore = false;
@@ -249,8 +252,8 @@ jobs:
                   console.error(`Failed to delete release ${release.name || release.tag_name}: ${error.message}`);
                 }
               }
-
-              page++;
+              // Stay on this page: deletions shift the remainder down, so
+              // incrementing would skip every other release.
             }
 
             console.log("\nFetching all tags...");
@@ -288,8 +291,8 @@ jobs:
                   console.error(`Failed to delete tag ${tag.name}: ${error.message}`);
                 }
               }
-
-              page++;
+              // Stay on this page: deletions shift the remainder down, so
+              // incrementing would skip every other tag.
             }
 
             console.log(`\nTotal releases deleted: ${totalReleasesDeleted}`);

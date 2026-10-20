@@ -77,7 +77,7 @@ dns:
 proxy-providers:
   ID:
     type: file
-    path: "./proxyprovider/ID.yaml"
+    path: "./proxyprovider/id.yaml"
     health-check:
       enable: true
       url: http://ping.xmbb.net/

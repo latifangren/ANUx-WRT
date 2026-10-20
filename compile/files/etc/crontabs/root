@@ -7,11 +7,5 @@
 #30 3 * * * echo AT^RESET | atinout - /dev/ttyUSB1 - && sleep 20 && ifdown wan && ifup wan
 # Fibocom restart - Daily 03:30
 #30 3 * * * ifdown fibocom && sleep 3 && ifup fibocom
-# restart openclash every 8h
-#0 */8 * * * /etc/init.d/openclash restart
-# restart bot every 12h
-#0 */12 * * * /etc/init.d/anux restart
-# Network stats every 5m
 # RAM cleanup every 10h
 0 */10 * * * /sbin/free.sh >/dev/null 2>&1
-*/5 * * * * /www/netmonitor/vnstati/vnstati.sh >/dev/null 2>&1

@@ -37,7 +37,7 @@
 ### 🎨 Antarmuka Modern & Cepat
 * **Default Theme — [Footstrap](https://github.com/VizzleTF/luci-theme-footstrap)**: Antarmuka Single Page Application (SPA) yang 2× lebih cepat, responsif di HP/desktop, dan dilengkapi diagram visual **Network Topology & Client Path**.
 * **Konsol Cerdas — [Vantage](https://github.com/anothaDev/luci-theme-vantage)**: Dilengkapi command palette (`Ctrl + K`), flyout sidebar, dan live status stasiun/sinyal dBm per-klien.
-* **Tema Alternatif**: Didukung tema **Argon** ([jerrykuku](https://github.com/jerrykuku/luci-theme-argon)) dan **Luxe**.
+* **Tema Alternatif**: Didukung tema **Argon** ([jerrykuku](https://github.com/jerrykuku/luci-theme-argon)).
 
 ### 📶 Ekosistem Modem 4G/5G Terpadu
 * Ditenagai oleh **[luci-app-5gmodem](https://github.com/fildunsky/luci-app-5gmodem)**:
@@ -49,17 +49,14 @@
   - Peta BTS (Cell Tower Map) dan pembacaan sensor suhu modem.
   - Dukungan luas: Fibocom FM350-GL, Intel XMM (L850/L860 via `xmm-modem`), Snapdragon X55/X62/X20, Quectel, SIMCom, MeigLink, dll.
 
-### 📂 File Manager Berbasis Golang (Bebas Bloatware PHP)
-* Menggunakan **[FileBrowser](https://github.com/filebrowser/filebrowser)** (`filebrowser` + `luci-app-filebrowser`):
-  - *Single static binary* hemat RAM (~15-25 MB).
-  - Web Code Editor langsung untuk mengedit skrip dan konfigurasi YAML tanpa SSH.
-  - Upload, download, extract zip, dan streaming media langsung dari browser.
-  - Bebas dari tumpukan paket PHP 8 yang berat.
+### 💾 Manajemen File & Diagnostik
+* **File Manager**: **`luci-app-filebrowser`** — file manager web berbasis Go, hemat RAM (~15-25 MB), dengan web code editor untuk mengubah skrip dan konfigurasi YAML tanpa SSH. Tersedia di feed Kiddin9, tanpa bloatware PHP.
+* **Diagnostik Jaringan**: `vnstat2` / `vnstati2` (feed resmi OpenWrt) untuk statistik trafik antarmuka, `luci-app-ramfree` untuk monitoring RAM, dan `luci-app-eqosplus` untuk manajemen bandwidth QoS per-klien.
 
 ### ⚡ Optimalisasi Kernel & Stabilitas Sistem
 * **Google BBR** (`kmod-tcp-bbr`): Algoritma *congestion control* untuk koneksi VPN dan browsing yang jauh lebih responsif.
-* **ZRAM ZSTD** (`kmod-lib-zstd`): Kompresi memori swap berkecepatan tinggi agar router tidak mudah *Out-Of-Memory*.
-* **Hardware Monitor** (`autocore`): Pembacaan beban CPU dan suhu hardware yang presisi di overview LuCI.
+* **ZRAM ZSTD** (`zram-swap` + `kmod-lib-zstd`): Swap terkompresi agar router tidak mudah *Out-Of-Memory*.
+* **Hardware Monitor** (`autocore`, basis ImmortalWrt): Pembacaan beban CPU dan suhu hardware di overview LuCI.
 * **Web Server Tuning**: `uhttpd` *max concurrent requests* dinaikkan ke 20 dan `rpcd timeout` diperpanjang ke 120 detik untuk mencegah error *"Gateway Timeout"*.
 * **Auto-Repair Filesystem** (`repair_ro`): Otomatis mendeteksi dan memperbaiki partisi ext4 yang terkunci *Read-Only* akibat router mati lampu mendadak.
 
@@ -128,7 +125,7 @@ Proyek ini dibangun di atas karya, ide, dan kontribusi hebat komunitas Open Sour
 * **[rizkikotet-dev/RTA-WRT](https://github.com/rizkikotet-dev/RTA-WRT)** — Builder RTA & skrip mod-boot-sdcard.
 * **[frizkyiman/friWrt-MyWrtBuilder](https://github.com/frizkyiman/friWrt-MyWrtBuilder)** — Skrip `repair_ro` penyelamat filesystem ext4.
 * **[Ophub](https://github.com/ophub)** — Kernel packaging dan toolchain STB Amlogic.
-* **[armarchindo/ULO-Builder](https://github.com/armarchindo/ULO-Builder)** — Skrip builder firmware arsitektur Allwinner.
+* **[syntax-xidz](https://github.com/syntax-xidz)** — ULO-Builder dan Amlogic s9xxx packaging.
 * **[MetaCubeX](https://github.com/MetaCubeX)** — Core Mihomo & aset aturan GeoIP/GeoSite.
 
 ---

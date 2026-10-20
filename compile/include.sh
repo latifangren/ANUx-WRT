@@ -178,6 +178,19 @@ ariadl() {
     return 1
 }
 
+# Curl wrapper that attaches a GitHub token when one is available.
+# Anonymous api.github.com calls are capped at 60 req/h per runner IP, which a
+# full device matrix exhausts quickly and turns into "Package not found".
+gh_curl() {
+    local -a auth=()
+    if [[ -n "${GH_API_TOKEN:-}" ]]; then
+        auth=(-H "Authorization: Bearer ${GH_API_TOKEN}")
+        auth+=(-H "Accept: application/vnd.github+json")
+        auth+=(-H "X-GitHub-Api-Version: 2022-11-28")
+    fi
+    curl -sL "${auth[@]}" "$@"
+}
+
 # Fetch packages dynamically
 download_packages() {
     local -n package_list="$1"
@@ -229,7 +242,7 @@ download_packages() {
 
         # 2. GitHub API Releases
         elif [[ "$base_url" == *"api.github.com/repos/"*"/releases"* ]]; then
-            local file_urls=$(curl -sL "$base_url" | jq -r '.assets[].browser_download_url' 2>/dev/null || echo "")
+            local file_urls=$(gh_curl "$base_url" | jq -r '.assets[].browser_download_url' 2>/dev/null || echo "")
             download_url=$(filter_urls "$file_urls" "$pkg_ext")
             
             # Fallback to .ipk
@@ -240,7 +253,7 @@ download_packages() {
         # 3. Standard GitHub Release URL
         elif [[ "$base_url" == *"github.com/"*"/releases/latest"* ]]; then
             local api_url=$(echo "$base_url" | sed 's|github.com|api.github.com/repos|' | sed 's|/releases/latest|/releases/latest|')
-            local file_urls=$(curl -sL "$api_url" | jq -r '.assets[].browser_download_url' 2>/dev/null || echo "")
+            local file_urls=$(gh_curl "$api_url" | jq -r '.assets[].browser_download_url' 2>/dev/null || echo "")
             download_url=$(filter_urls "$file_urls" "$pkg_ext")
             
             if [[ -z "$download_url" && "$pkg_ext" == "apk" ]]; then
@@ -249,7 +262,7 @@ download_packages() {
 
         # 4. GitHub API Contents
         elif [[ "$base_url" == *"api.github.com/repos/"*"/contents/"* ]]; then
-            local file_urls=$(curl -sL "$base_url" | jq -r '.[].download_url' 2>/dev/null || echo "")
+            local file_urls=$(gh_curl "$base_url" | jq -r '.[].download_url' 2>/dev/null || echo "")
             download_url=$(filter_urls "$file_urls" "$pkg_ext")
             
             if [[ -z "$download_url" && "$pkg_ext" == "apk" ]]; then

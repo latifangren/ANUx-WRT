@@ -1,0 +1,22 @@
+# Normalize text files to LF in the index so ImageBuilder and shell scripts
+# never receive CRLF. The repo is authored on Windows, where the checkout is
+# still CRLF-free thanks to core.autocrlf=false below.
+* text=auto eol=lf
+
+# The geodata databases and dashboard assets are opaque binaries.
+*.dat binary
+*.mmdb binary
+*.ipk binary
+*.gz binary
+*.zst binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.jpg binary
+*.png binary
+*.gif binary
+*.ico binary
+
+# Keep build outputs out of git even without .gitignore matching them.
+compiled_images/ export-ignore
+imagebuilder/ export-ignore
